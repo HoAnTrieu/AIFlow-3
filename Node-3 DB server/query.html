@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Query Robot Events</title>
+  <style>
+    :root {
+      --bg: #efefef;
+      --card: #ffffff;
+      --border: #d8d8d8;
+      --text: #2c2c2c;
+      --muted: #6f6f6f;
+      --ok: #2e9c61;
+      --idle: #9ba3af;
+      --err: #d64545;
+      --warn: #f0ad4e;
+      --accent: #1b88a9;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .title { font-size: 28px; font-weight: 300; letter-spacing: .2px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+      transition: .18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,.05); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .btn-danger { background: var(--err); border-color: var(--err); color: white; }
+    .btn-muted { background: #f9f9f9; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.03);
+      margin-bottom: 16px;
+    }
+
+    .card h3 { margin: 0 0 16px 0; font-size: 16px; font-weight: 500; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .summary-item {
+      background: #fafafa;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 92px;
+    }
+
+    .summary-item .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    .summary-item .value { font-size: 28px; font-weight: 700; margin-top: 10px; }
+    .summary-item .sub { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+      background: white;
+      max-height: 680px;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f8f8f8;
+      z-index: 2;
+      font-size: 13px;
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid #e3e3e3;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    tbody tr.fail-row { background: rgba(214, 69, 69, 0.08); }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill-success { background: rgba(46,156,97,.12); color: var(--ok); }
+    .pill-fail { background: rgba(214,69,69,.12); color: var(--err); }
+    .pill-color { background: rgba(27,136,169,.12); color: var(--accent); }
+
+    .footbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .page-info { color: var(--muted); font-size: 14px; }
+
+    .modal {
+      width: min(980px, calc(100vw - 24px));
+      border: none;
+      border-radius: 18px;
+      padding: 0;
+      box-shadow: 0 24px 64px rgba(0,0,0,.28);
+    }
+
+    .modal::backdrop { background: rgba(0,0,0,.35); }
+    .modal-head, .modal-body, .modal-foot { padding: 16px 18px; }
+    .modal-head { border-bottom: 1px solid #ededed; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .modal-body { max-height: 70vh; overflow: auto; }
+    .modal-foot { border-top: 1px solid #ededed; display: flex; justify-content: flex-end; }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #fbfbfb;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 22px;
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: white;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+      z-index: 99;
+      display: none;
+    }
+
+    .toast-ok { background: var(--ok); }
+    .toast-err { background: var(--err); }
+
+    @media (max-width: 1300px) {
+      .filters, .summary-grid { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .filters, .summary-grid { grid-template-columns: 1fr; }
+      .toolbar { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Query Robot Events</div>
+        <div class="subtitle">Tra cứu dữ liệu theo bộ lọc, export CSV, xem raw JSON và reset DB có mật khẩu.</div>
+      </div>
+      <div class="toolbar">
+        <a class="btn btn-muted" href="/">Dashboard</a>
+        <a class="btn btn-primary" href="/query">Query DB</a>
+        <button class="btn btn-muted" id="reloadBtn" type="button">Reload</button>
+        <button class="btn btn-muted" id="exportBtn" type="button">Export CSV</button>
+        <button class="btn btn-danger" id="resetDbBtn" type="button">Reset DB</button>
+      </div>
+    </div>
+
+    <section class="card">
+      <h3>Bộ lọc tra cứu</h3>
+      <form id="queryForm" class="filters">
+        <div class="field">
+          <label for="robot_id">Robot ID</label>
+          <input id="robot_id" name="robot_id" list="robot_id_list" placeholder="VD: R1">
+          <datalist id="robot_id_list"></datalist>
+        </div>
+        <div class="field">
+          <label for="status">Status</label>
+          <input id="status" name="status" list="status_list" placeholder="RUNNING / IDLE / ERROR">
+          <datalist id="status_list"></datalist>
+        </div>
+        <div class="field">
+          <label for="action_result">Action Result</label>
+          <input id="action_result" name="action_result" list="result_list" placeholder="SUCCESS / FAIL">
+          <datalist id="result_list"></datalist>
+        </div>
+        <div class="field">
+          <label for="color">Color</label>
+          <input id="color" name="color" list="color_list" placeholder="RED / BLUE">
+          <datalist id="color_list"></datalist>
+        </div>
+        <div class="field">
+          <label for="target_bin">Target Bin</label>
+          <input id="target_bin" name="target_bin" list="target_bin_list" placeholder="BIN-A">
+          <datalist id="target_bin_list"></datalist>
+        </div>
+        <div class="field">
+          <label for="client_ip">Client IP</label>
+          <input id="client_ip" name="client_ip" list="client_ip_list" placeholder="127.0.0.1">
+          <datalist id="client_ip_list"></datalist>
+        </div>
+        <div class="field">
+          <label for="start_time">Start time</label>
+          <input id="start_time" name="start_time" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="end_time">End time</label>
+          <input id="end_time" name="end_time" type="datetime-local">
+        </div>
+        <div class="field">
+          <label for="min_confidence">Min confidence</label>
+          <input id="min_confidence" name="min_confidence" type="number" step="0.01" min="0" max="1" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label for="max_confidence">Max confidence</label>
+          <input id="max_confidence" name="max_confidence" type="number" step="0.01" min="0" max="1" placeholder="1.00">
+        </div>
+        <div class="field">
+          <label for="keyword">Keyword</label>
+          <input id="keyword" name="keyword" placeholder="Tìm trong JSON / robot / IP...">
+        </div>
+        <div class="field">
+          <label for="page_size">Page size</label>
+          <select id="page_size" name="page_size">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="150">150</option>
+            <option value="{{ max_page_size }}">{{ max_page_size }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sort_by">Sort by</label>
+          <select id="sort_by" name="sort_by">
+            <option value="id" selected>ID</option>
+            <option value="timestamp_text">Timestamp</option>
+            <option value="robot_id">Robot ID</option>
+            <option value="status">Status</option>
+            <option value="object_color_detected">Color</option>
+            <option value="target_bin">Target Bin</option>
+            <option value="action_result">Action Result</option>
+            <option value="confidence">Confidence</option>
+            <option value="received_at">Received At</option>
+            <option value="client_ip">Client IP</option>
+            <option value="event_ts">Event TS</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sort_dir">Sort dir</label>
+          <select id="sort_dir" name="sort_dir">
+            <option value="desc" selected>DESC</option>
+            <option value="asc">ASC</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Preset time</label>
+          <select id="presetTime">
+            <option value="">Chọn nhanh</option>
+            <option value="1h">1 giờ gần nhất</option>
+            <option value="today">Hôm nay</option>
+            <option value="24h">24 giờ gần nhất</option>
+            <option value="7d">7 ngày gần nhất</option>
+            <option value="30d">30 ngày gần nhất</option>
+          </select>
+        </div>
+        <div class="field" style="align-self:end;">
+          <button class="btn btn-primary" type="submit">Search</button>
+        </div>
+        <div class="field" style="align-self:end;">
+          <button class="btn btn-muted" id="resetFilterBtn" type="button">Reset Filter</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3>Tóm tắt theo bộ lọc hiện tại</h3>
+      <div class="summary-grid">
+        <div class="summary-item"><div class="label">Total</div><div class="value" id="sumTotal">0</div><div class="sub" id="sumRange">-</div></div>
+        <div class="summary-item"><div class="label">Success</div><div class="value" id="sumSuccess">0</div><div class="sub" id="sumSuccessPct">0%</div></div>
+        <div class="summary-item"><div class="label">Fail</div><div class="value" id="sumFail">0</div><div class="sub" id="sumFailPct">0%</div></div>
+        <div class="summary-item"><div class="label">Avg confidence</div><div class="value" id="sumAvgConfidence">-</div><div class="sub">Giá trị trung bình</div></div>
+        <div class="summary-item"><div class="label">Top color</div><div class="value" id="sumTopColor">-</div><div class="sub" id="sumTopColorCount">-</div></div>
+        <div class="summary-item"><div class="label">Top robot</div><div class="value" id="sumTopRobot">-</div><div class="sub" id="sumTopRobotCount">-</div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Kết quả tra cứu</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Time</th>
+              <th>Robot</th>
+              <th>Status</th>
+              <th>Color</th>
+              <th>Bin</th>
+              <th>Result</th>
+              <th>Confidence</th>
+              <th>IP</th>
+              <th>Received</th>
+              <th>Detail</th>
+            </tr>
+          </thead>
+          <tbody id="queryTableBody">
+            <tr><td colspan="11" class="empty">Đang tải dữ liệu...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="footbar">
+        <div class="page-info" id="pageInfo">Trang 1 / 1</div>
+        <div class="toolbar">
+          <button class="btn btn-muted" id="prevPageBtn" type="button">Prev</button>
+          <button class="btn btn-muted" id="nextPageBtn" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog class="modal" id="detailDialog">
+    <div class="modal-head">
+      <strong id="detailTitle">Chi tiết event</strong>
+      <button class="btn btn-muted" id="closeDetailBtn" type="button">Đóng</button>
+    </div>
+    <div class="modal-body">
+      <pre id="detailPre">-</pre>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-muted" id="copyDetailBtn" type="button">Copy JSON</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let lastItems = [];
+
+    function showToast(message, type = 'ok') {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.className = `toast ${type === 'ok' ? 'toast-ok' : 'toast-err'}`;
+      el.style.display = 'block';
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => { el.style.display = 'none'; }, 2600);
+    }
+
+    function fillDatalist(id, values) {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      (values || []).forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        el.appendChild(option);
+      });
+    }
+
+    async function loadOptions() {
+      try {
+        const res = await fetch('/api/filter-options', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Không lấy được options');
+        const opts = data.options || {};
+        fillDatalist('robot_id_list', opts.robot_ids);
+        fillDatalist('status_list', opts.statuses);
+        fillDatalist('result_list', opts.results);
+        fillDatalist('color_list', opts.colors);
+        fillDatalist('target_bin_list', opts.target_bins);
+        fillDatalist('client_ip_list', opts.client_ips);
+      } catch (err) {
+        showToast(err.message || String(err), 'err');
+      }
+    }
+
+    function getParams(page = currentPage) {
+      const form = document.getElementById('queryForm');
+      const params = new URLSearchParams(new FormData(form));
+      params.set('page', String(page));
+      return params;
+    }
+
+    function renderSummary(summary) {
+      const s = summary || {};
+      document.getElementById('sumTotal').textContent = s.total ?? 0;
+      document.getElementById('sumSuccess').textContent = s.success_count ?? 0;
+      document.getElementById('sumFail').textContent = s.fail_count ?? 0;
+      document.getElementById('sumSuccessPct').textContent = `${Number(s.success_pct || 0).toFixed(2)}%`;
+      document.getElementById('sumFailPct').textContent = `${Number(s.fail_pct || 0).toFixed(2)}%`;
+      document.getElementById('sumAvgConfidence').textContent = s.avg_confidence != null ? Number(s.avg_confidence).toFixed(4) : '-';
+      document.getElementById('sumTopColor').textContent = s.top_color?.label || '-';
+      document.getElementById('sumTopColorCount').textContent = s.top_color ? `Count: ${s.top_color.count}` : '-';
+      document.getElementById('sumTopRobot').textContent = s.top_robot?.label || '-';
+      document.getElementById('sumTopRobotCount').textContent = s.top_robot ? `Count: ${s.top_robot.count}` : '-';
+      if (s.min_time || s.max_time) {
+        document.getElementById('sumRange').textContent = `${s.min_time || '-'} → ${s.max_time || '-'}`;
+      } else {
+        document.getElementById('sumRange').textContent = '-';
+      }
+    }
+
+    function renderRows(items) {
+      const body = document.getElementById('queryTableBody');
+      body.innerHTML = '';
+      if (!items || !items.length) {
+        body.innerHTML = '<tr><td colspan="11" class="empty">Không có bản ghi phù hợp.</td></tr>';
+        return;
+      }
+      items.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        if ((item.action_result || '').toUpperCase() === 'FAIL') tr.classList.add('fail-row');
+        tr.innerHTML = `
+          <td>${item.id}</td>
+          <td>${item.timestamp_text || '-'}</td>
+          <td>${item.robot_id || '-'}</td>
+          <td>${item.display_status || '-'}</td>
+          <td><span class="pill pill-color">${item.object_color_detected || '-'}</span></td>
+          <td>${item.target_bin || '-'}</td>
+          <td><span class="pill ${(item.action_result || '').toUpperCase() === 'FAIL' ? 'pill-fail' : 'pill-success'}">${item.action_result || '-'}</span></td>
+          <td>${item.confidence != null ? Number(item.confidence).toFixed(4) : '-'}</td>
+          <td>${item.client_ip || '-'}</td>
+          <td>${item.received_at || '-'}</td>
+          <td><button class="btn btn-muted" data-detail-index="${index}" type="button">View</button></td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderPageInfo(page, total, totalItems) {
+      document.getElementById('pageInfo').textContent = `Trang ${page} / ${total} • Tổng ${totalItems} bản ghi`;
+      document.getElementById('prevPageBtn').disabled = page <= 1;
+      document.getElementById('nextPageBtn').disabled = page >= total;
+    }
+
+    async function loadEvents(page = 1) {
+      currentPage = page;
+      try {
+        const res = await fetch(`/api/events?${getParams(page).toString()}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Không tải được dữ liệu');
+
+        lastItems = data.items || [];
+        totalPages = data.total_pages || 1;
+        renderSummary(data.summary || {});
+        renderRows(lastItems);
+        renderPageInfo(data.page || 1, totalPages, data.total || 0);
+      } catch (err) {
+        renderRows([]);
+        renderSummary({});
+        renderPageInfo(1, 1, 0);
+        showToast(err.message || String(err), 'err');
+      }
+    }
+
+    function applyPreset(value) {
+      const startInput = document.getElementById('start_time');
+      const endInput = document.getElementById('end_time');
+      if (!value) return;
+
+      const now = new Date();
+      const end = new Date(now);
+      const start = new Date(now);
+
+      if (value === '1h') start.setHours(start.getHours() - 1);
+      else if (value === '24h') start.setHours(start.getHours() - 24);
+      else if (value === '7d') start.setDate(start.getDate() - 7);
+      else if (value === '30d') start.setDate(start.getDate() - 30);
+      else if (value === 'today') {
+        start.setHours(0, 0, 0, 0);
+      }
+
+      const toLocalInputValue = (date) => {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      };
+
+      startInput.value = toLocalInputValue(start);
+      endInput.value = toLocalInputValue(end);
+    }
+
+    function resetFilters() {
+      document.getElementById('queryForm').reset();
+      document.getElementById('page_size').value = '50';
+      document.getElementById('sort_by').value = 'id';
+      document.getElementById('sort_dir').value = 'desc';
+      currentPage = 1;
+      loadEvents(1);
+    }
+
+    async function exportCsv() {
+      const url = `/api/events/export?${getParams(currentPage).toString()}`;
+      window.location.href = url;
+    }
+
+    function openDetail(index) {
+      const item = lastItems[index];
+      if (!item) return;
+      document.getElementById('detailTitle').textContent = `Event #${item.id} - ${item.robot_id || '-'}`;
+      const detailText = JSON.stringify(item.raw_data || item, null, 2);
+      document.getElementById('detailPre').textContent = detailText;
+      document.getElementById('detailDialog').showModal();
+    }
+
+    async function copyDetail() {
+      const text = document.getElementById('detailPre').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('Đã copy JSON.', 'ok');
+      } catch (err) {
+        showToast('Copy thất bại.', 'err');
+      }
+    }
+
+    async function resetDatabase() {
+      const password = window.prompt('Nhập mật khẩu Reset DB:');
+      if (password === null) return;
+      const confirmText = window.prompt('Nhập RESET để xác nhận xóa toàn bộ dữ liệu:');
+      if (confirmText === null) return;
+      try {
+        const res = await fetch('/api/admin/reset-db', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, confirm: confirmText })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Reset DB thất bại');
+        showToast(`Reset DB thành công. Đã xóa ${data.removed_count} bản ghi.`, 'ok');
+        await loadOptions();
+        await loadEvents(1);
+      } catch (err) {
+        showToast(err.message || String(err), 'err');
+      }
+    }
+
+    document.getElementById('queryForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      loadEvents(1);
+    });
+    document.getElementById('reloadBtn').addEventListener('click', () => loadEvents(currentPage));
+    document.getElementById('exportBtn').addEventListener('click', exportCsv);
+    document.getElementById('resetFilterBtn').addEventListener('click', resetFilters);
+    document.getElementById('resetDbBtn').addEventListener('click', resetDatabase);
+    document.getElementById('prevPageBtn').addEventListener('click', () => { if (currentPage > 1) loadEvents(currentPage - 1); });
+    document.getElementById('nextPageBtn').addEventListener('click', () => { if (currentPage < totalPages) loadEvents(currentPage + 1); });
+    document.getElementById('presetTime').addEventListener('change', (e) => { applyPreset(e.target.value); });
+    document.getElementById('queryTableBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-detail-index]');
+      if (!btn) return;
+      openDetail(Number(btn.dataset.detailIndex));
+    });
+    document.getElementById('closeDetailBtn').addEventListener('click', () => document.getElementById('detailDialog').close());
+    document.getElementById('copyDetailBtn').addEventListener('click', copyDetail);
+
+    loadOptions();
+    loadEvents(1);
+  </script>
+</body>
+</html>

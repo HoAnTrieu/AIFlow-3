@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Robot Sorting Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #efefef;
+      --card: #ffffff;
+      --border: #d8d8d8;
+      --text: #2c2c2c;
+      --muted: #6f6f6f;
+      --ok: #2e9c61;
+      --idle: #9ba3af;
+      --err: #d64545;
+      --warn: #f0ad4e;
+      --accent: #1b88a9;
+      --accent-2: #7a5a91;
+      --accent-3: #8bc34a;
+      --accent-4: #f4c95d;
+      --accent-5: #e76f51;
+      --accent-6: #7cc3d5;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .title { font-size: 28px; font-weight: 300; letter-spacing: .2px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 14px;
+      transition: .18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,.05); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .btn-danger { background: var(--err); border-color: var(--err); color: white; }
+    .btn-ghost { background: #f9f9f9; }
+
+    .updated-text {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 14px;
+      padding: 8px 0;
+    }
+
+    .grid-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .grid-mid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    }
+
+    .card h3 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .status-layout {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
+      min-height: 140px;
+      padding: 18px;
+      border-radius: 18px;
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-align: center;
+    }
+
+    .status-running { background: var(--ok); }
+    .status-idle { background: var(--idle); }
+    .status-error { background: var(--err); }
+    .status-unknown { background: #666; }
+
+    .status-fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      background: #fafafa;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 72px;
+    }
+
+    .field-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .field-value { font-size: 20px; font-weight: 600; word-break: break-word; }
+
+    .mini-stat {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 190px;
+    }
+
+    .mini-stat .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .mini-stat .value { font-size: 42px; font-weight: 700; margin: 8px 0; }
+    .mini-stat .sub { font-size: 13px; color: var(--muted); }
+
+    .alert-normal { color: var(--ok); }
+    .alert-warning { color: var(--warn); }
+    .alert-critical { color: var(--err); }
+
+    .chart-card canvas {
+      width: 100% !important;
+      height: 320px !important;
+    }
+
+    .small-chart canvas { height: 260px !important; }
+
+    .error-box {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .error-empty {
+      color: var(--ok);
+      font-weight: 600;
+      padding-top: 10px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 420px;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+    }
+
+    table { width: 100%; border-collapse: collapse; background: white; }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f8f8f8;
+      z-index: 2;
+      font-size: 13px;
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid #e3e3e3;
+    }
+
+    tbody td {
+      padding: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+    }
+
+    tbody tr.fail-row { background: rgba(214, 69, 69, 0.08); }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill-success { background: rgba(46,156,97,.12); color: var(--ok); }
+    .pill-fail { background: rgba(214,69,69,.12); color: var(--err); }
+    .pill-color { background: rgba(27,136,169,.12); color: var(--accent); }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: white;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+      z-index: 99;
+      display: none;
+    }
+
+    .toast-ok { background: var(--ok); }
+    .toast-err { background: var(--err); }
+
+    @media (max-width: 1100px) {
+      .grid-top, .grid-mid, .grid-bottom { grid-template-columns: 1fr; }
+      .status-layout { grid-template-columns: 1fr; }
+      .status-fields { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      .status-fields { grid-template-columns: 1fr; }
+      .error-box { grid-template-columns: 1fr; }
+      .header-right { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Robot Sorting Dashboard</div>
+        <div class="subtitle">Giám sát realtime, thống kê nhanh và truy cập trang tra cứu dữ liệu.</div>
+      </div>
+      <div class="header-right">
+        <div class="updated-text" id="updatedText">Đang tải dữ liệu...</div>
+        <div class="toolbar">
+          <a class="btn btn-primary" href="/">Dashboard</a>
+          <a class="btn btn-ghost" href="/query">Query DB</a>
+          <button class="btn btn-danger" id="resetDbBtn" type="button">Reset DB</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="grid-top">
+      <div class="card">
+        <h3>Robot Status Panel</h3>
+        <div class="status-layout">
+          <div id="statusBadge" class="status-badge status-unknown">UNKNOWN</div>
+          <div class="status-fields">
+            <div class="field">
+              <div class="field-label">Robot ID</div>
+              <div class="field-value" id="robotId">-</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Last Action</div>
+              <div class="field-value" id="lastAction">-</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Detected Color</div>
+              <div class="field-value" id="detectedColor">-</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Target Bin</div>
+              <div class="field-value" id="targetBin">-</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Confidence</div>
+              <div class="field-value" id="confidence">-</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Timestamp</div>
+              <div class="field-value" id="timestamp">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mini-stat">
+        <div>
+          <h3>Success / Fail Rate</h3>
+          <div class="label">Success rate</div>
+          <div class="value" id="successPct">0%</div>
+          <div class="sub">Fail rate: <span id="failPct">0%</span></div>
+        </div>
+        <div class="sub">
+          Alert: <span id="failAlert" class="alert-normal">NORMAL</span>
+        </div>
+      </div>
+
+      <div class="card mini-stat">
+        <div>
+          <h3>System Counters</h3>
+          <div class="label">Total events</div>
+          <div class="value" id="totalEvents">0</div>
+          <div class="sub">Fail in last 50: <span id="recentFailCount">0</span></div>
+        </div>
+        <div class="sub">Refresh mỗi {{ refresh_ms }} ms</div>
+      </div>
+    </section>
+
+    <section class="grid-mid">
+      <div class="card chart-card">
+        <h3>Sorting Statistics</h3>
+        <canvas id="sortingChart"></canvas>
+      </div>
+      <div class="card chart-card small-chart">
+        <h3>Action Result Distribution</h3>
+        <canvas id="resultChart"></canvas>
+      </div>
+    </section>
+
+    <section class="grid-bottom">
+      <div class="card">
+        <h3>Last Error</h3>
+        <div id="errorContent" class="error-empty">Chưa có lỗi nào được ghi nhận.</div>
+      </div>
+      <div class="card">
+        <h3>Color Summary</h3>
+        <div id="colorSummary" class="error-box"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Event Log Table</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Robot</th>
+              <th>Status</th>
+              <th>Color</th>
+              <th>Bin</th>
+              <th>Result</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const refreshMs = parseInt('{{ refresh_ms }}', 10) || 5000;
+    let sortingChart = null;
+    let resultChart = null;
+
+    const palette = ['#1b88a9', '#f4c95d', '#7a5a91', '#8bc34a', '#e76f51', '#7cc3d5', '#9ba3af'];
+
+    function showToast(message, type = 'ok') {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.className = `toast ${type === 'ok' ? 'toast-ok' : 'toast-err'}`;
+      el.style.display = 'block';
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        el.style.display = 'none';
+      }, 2600);
+    }
+
+    function formatPct(value) {
+      return `${Number(value || 0).toFixed(2)}%`;
+    }
+
+    function setStatusBadge(status) {
+      const el = document.getElementById('statusBadge');
+      el.textContent = status || 'UNKNOWN';
+      el.className = 'status-badge';
+      if (status === 'RUNNING') el.classList.add('status-running');
+      else if (status === 'IDLE') el.classList.add('status-idle');
+      else if (status === 'ERROR') el.classList.add('status-error');
+      else el.classList.add('status-unknown');
+    }
+
+    function upsertChart(existingChart, canvasId, config) {
+      if (existingChart) {
+        existingChart.data = config.data;
+        existingChart.options = config.options;
+        existingChart.update();
+        return existingChart;
+      }
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      return new Chart(ctx, config);
+    }
+
+    function renderColorSummary(items) {
+      const box = document.getElementById('colorSummary');
+      box.innerHTML = '';
+      if (!items || !items.length) {
+        box.innerHTML = '<div class="error-empty">Chưa có dữ liệu màu.</div>';
+        return;
+      }
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'field';
+        div.innerHTML = `
+          <div class="field-label">${item.label}</div>
+          <div class="field-value">${item.count}</div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function renderErrorBox(lastError) {
+      const box = document.getElementById('errorContent');
+      if (!lastError) {
+        box.className = 'error-empty';
+        box.textContent = 'Chưa có lỗi nào được ghi nhận.';
+        return;
+      }
+      box.className = 'error-box';
+      box.innerHTML = `
+        <div class="field"><div class="field-label">Robot</div><div class="field-value">${lastError.robot_id}</div></div>
+        <div class="field"><div class="field-label">Color</div><div class="field-value">${lastError.object_color_detected}</div></div>
+        <div class="field"><div class="field-label">Target Bin</div><div class="field-value">${lastError.target_bin}</div></div>
+        <div class="field"><div class="field-label">Confidence</div><div class="field-value">${Number(lastError.confidence).toFixed(2)}</div></div>
+        <div class="field"><div class="field-label">Time</div><div class="field-value">${lastError.timestamp_text}</div></div>
+        <div class="field"><div class="field-label">Status</div><div class="field-value">${lastError.display_status}</div></div>
+      `;
+    }
+
+    function renderLogTable(events) {
+      const body = document.getElementById('logTableBody');
+      body.innerHTML = '';
+      if (!events || !events.length) {
+        body.innerHTML = '<tr><td colspan="7">Chưa có dữ liệu.</td></tr>';
+        return;
+      }
+
+      events.forEach(item => {
+        const tr = document.createElement('tr');
+        if ((item.action_result || '').toUpperCase() === 'FAIL') {
+          tr.classList.add('fail-row');
+        }
+        tr.innerHTML = `
+          <td>${item.timestamp_text}</td>
+          <td>${item.robot_id}</td>
+          <td>${item.display_status}</td>
+          <td><span class="pill pill-color">${item.object_color_detected}</span></td>
+          <td>${item.target_bin}</td>
+          <td>
+            <span class="pill ${(item.action_result || '').toUpperCase() === 'FAIL' ? 'pill-fail' : 'pill-success'}">
+              ${item.action_result}
+            </span>
+          </td>
+          <td>${Number(item.confidence).toFixed(2)}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/dashboard', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Không đọc được dashboard');
+        }
+
+        document.getElementById('updatedText').textContent = `Chart data updated ${data.updated_at}`;
+        document.getElementById('totalEvents').textContent = data.total_events ?? 0;
+        document.getElementById('successPct').textContent = formatPct(data.success_pct);
+        document.getElementById('failPct').textContent = formatPct(data.fail_pct);
+        document.getElementById('recentFailCount').textContent = data.recent_fail_count_50 ?? 0;
+
+        const alertEl = document.getElementById('failAlert');
+        const alertValue = (data.fail_alert || 'normal').toUpperCase();
+        alertEl.textContent = alertValue;
+        alertEl.className = '';
+        alertEl.classList.add(`alert-${(data.fail_alert || 'normal')}`);
+
+        const latest = data.latest || {};
+        setStatusBadge(latest.display_status || 'UNKNOWN');
+        document.getElementById('robotId').textContent = latest.robot_id || '-';
+        document.getElementById('lastAction').textContent = latest.action_result || '-';
+        document.getElementById('detectedColor').textContent = latest.object_color_detected || '-';
+        document.getElementById('targetBin').textContent = latest.target_bin || '-';
+        document.getElementById('confidence').textContent = latest.confidence != null ? Number(latest.confidence).toFixed(2) : '-';
+        document.getElementById('timestamp').textContent = latest.timestamp_text || '-';
+
+        const colorItems = data.sorting_statistics || [];
+        renderColorSummary(colorItems);
+
+        sortingChart = upsertChart(sortingChart, 'sortingChart', {
+          type: 'bar',
+          data: {
+            labels: colorItems.map(i => i.label),
+            datasets: [{
+              label: 'Số lượng phân loại',
+              data: colorItems.map(i => i.count),
+              backgroundColor: colorItems.map((_, i) => palette[i % palette.length]),
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+
+        const resultItems = data.result_statistics || [];
+        resultChart = upsertChart(resultChart, 'resultChart', {
+          type: 'doughnut',
+          data: {
+            labels: resultItems.map(i => i.label),
+            datasets: [{
+              data: resultItems.map(i => i.count),
+              backgroundColor: ['#2e9c61', '#d64545', '#9ba3af', '#f0ad4e']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } },
+            cutout: '62%'
+          }
+        });
+
+        renderErrorBox(data.last_error || null);
+        renderLogTable(data.recent_events || []);
+      } catch (err) {
+        document.getElementById('updatedText').textContent = `Lỗi tải dashboard: ${err.message || err}`;
+      }
+    }
+
+    async function resetDatabase() {
+      const password = window.prompt('Nhập mật khẩu Reset DB:');
+      if (password === null) return;
+      const confirmText = window.prompt('Nhập RESET để xác nhận xóa toàn bộ dữ liệu:');
+      if (confirmText === null) return;
+
+      try {
+        const res = await fetch('/api/admin/reset-db', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, confirm: confirmText })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Reset DB thất bại');
+        }
+        showToast(`Reset DB thành công. Đã xóa ${data.removed_count} bản ghi.`, 'ok');
+        await loadDashboard();
+      } catch (err) {
+        showToast(err.message || String(err), 'err');
+      }
+    }
+
+    document.getElementById('resetDbBtn').addEventListener('click', resetDatabase);
+
+    loadDashboard();
+    setInterval(loadDashboard, refreshMs);
+  </script>
+</body>
+</html>
